@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woice AI Assistant</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root {
+  --bg-color: #000; --text-color: #d1d5db; --container-bg: rgba(31,31,31,0.6);
+  --chat-bg-user: #2c2c2c; --chat-bg-assistant: #1e1e1e; --input-bg: #2c2c2c;
+  --border-color: rgba(255,255,255,0.1); --mic-bg: rgba(30,144,255,0.8);
+  --mic-shadow: rgba(30,144,255,0.5); --suggestion-bg: rgba(255,255,255,0.1);
+  --modal-bg: rgba(31,31,31,0.9); --modal-content-bg: #1f1f1f;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.container {
+  width: 90%;
+  max-width: 450px;
+  background: var(--container-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: 2rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 80%;
+}
+
+.chat-area {
+  flex-grow: 1;
+  width: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.message {
+  max-width: 80%;
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  word-wrap: break-word;
+}
+
+.user-message { background-color: var(--chat-bg-user); align-self: flex-end; }
+.assistant-message { background-color: var(--chat-bg-assistant); align-self: flex-start; }
+
+.input-bar-container { width: 100%; display: flex; flex-direction: row; gap: 0.5rem; }
+
+#textInput {
+  flex-grow: 1;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  border: none;
+  outline: none;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+}
+
+#sendButton {
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  background-color: var(--mic-bg);
+  color: #fff;
+  cursor: pointer;
+}
+#sendButton:hover { transform: scale(1.05); transition: 0.2s; }
+
+.mic-container {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: var(--mic-bg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+.mic-container:hover { transform: scale(1.1); transition: 0.3s; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1 class="text-3xl font-bold mb-4">Woice</h1>
+
+  <div id="chatArea" class="chat-area"></div>
+
+  <div class="input-bar-container">
+    <div class="mic-container" id="micButton">🎤</div>
+    <input type="text" id="textInput" placeholder="Ask Woice..." />
+    <button id="sendButton">Send</button>
+  </div>
+
+  <div class="flex flex-row justify-center items-center gap-2 flex-wrap mt-3">
+    <button class="suggestion-button px-3 py-1 text-sm" data-command="What is the weather today?">Weather</button>
+    <button class="suggestion-button px-3 py-1 text-sm" data-command="Read my messages">Messages</button>
+    <button class="suggestion-button px-3 py-1 text-sm" data-command="Set a timer">Timer</button>
+  </div>
+</div>
+
+<script>
+const chatArea = document.getElementById('chatArea');
+const textInput = document.getElementById('textInput');
+const sendButton = document.getElementById('sendButton');
+const micButton = document.getElementById('micButton');
+
+function addMessageToChat(text, sender){
+  const div = document.createElement('div');
+  div.textContent = text;
+  div.classList.add('message', sender==='user'?'user-message':'assistant-message');
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+async function handleUserQuery(text){
+  let response = "";
+  const lower = text.toLowerCase();
+  if(lower.includes("weather")) response = "It’s sunny today, around 75°F.";
+  else if(lower.includes("messages")) response = "I cannot read your personal messages.";
+  else if(lower.includes("timer")) {
+    response = "Timer set for 5 seconds!";
+    addMessageToChat(response,'assistant');
+    setTimeout(()=>addMessageToChat("Timer finished!",'assistant'),5000);
+    return;
+  } else response = "Woice heard you: " + text;
+  addMessageToChat(response,'assistant');
+}
+
+sendButton.addEventListener('click', ()=>{
+  const text = textInput.value;
+  if(!text.trim()) return;
+  addMessageToChat(text,'user');
+  textInput.value='';
+  handleUserQuery(text);
+});
+
+textInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter') sendButton.click();
+});
+
+document.querySelectorAll('.suggestion-button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const cmd = btn.getAttribute('data-command');
+    addMessageToChat(cmd,'user');
+    handleUserQuery(cmd);
+  });
+});
+
+if('webkitSpeechRecognition' in window){
+  const recognition = new webkitSpeechRecognition();
+  recognition.continuous=false;
+  recognition.lang='en-US';
+  recognition.interimResults=false;
+  micButton.addEventListener('click', ()=>{ recognition.start(); });
+  recognition.onresult = e=>{
+    const transcript = e.results[0][0].transcript;
+    addMessageToChat(transcript,'user');
+    handleUserQuery(transcript);
+  };
+  recognition.onerror = e=>console.error(e);
+} else micButton.style.display='none';
+</script>
+</body>
+</html>
